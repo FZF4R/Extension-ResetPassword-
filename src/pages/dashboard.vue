@@ -33,7 +33,7 @@ interface DataItem {
 }
 
 const data : DataItem[] = ref([])
-
+const delayResetPassword: number = ref(15);
 const status: Record<DataItem['status'], string> = {
   1: 'Authen2FA',
   2: 'Live',
@@ -132,24 +132,13 @@ const copyAccountClipboard = function(rowItem){
 
 const runLoginAction = function(){
   var accounts = fileContent.value.split('\n').filter(x=>x && x.split('|').length >=5);
+  
   if (!accounts || accounts.length == 0 ) {
     alert("File nhập vào trống. Vui lòng kiểm tra lại");
     return;
   }
   
-  // Reset counters khi bắt đầu login mới
-  liveCount.value = 0;
-  cpCount.value = 0;
-  errorCount.value = 0;
-  authenCount.value = 0;
-  
-  // Clear data table và arrays
-  data.value = [];
-  liveAccounts.length = 0;
-  cpAccounts.length = 0;
-  errorAccounts.length = 0;
-  authenAccounts.length = 0;
-  
+
   RunResetPassByJs(accounts);
 
   // if (isProxy.value) {
@@ -296,19 +285,19 @@ const GetRandomAccountValid = function(){
 }
 
 var indexRunningAccount = ref(0)
-
+const ACTION_RESULTS  = ref([]);
 
 const RunResetPassByJs = async function(accounts: string[]){
   indexRunningAccount.value = 0;
   let index = 0;
   var breakTimeStep = BREAKING_TIME_PER_LIMIT_REQUEST.value * 1000; // Delay giữa {threadActionCount} luồng 
-
+  
   var accountsList = JSON.parse(JSON.stringify(accounts));
   for (let index = 0; index < accountsList.length; index++) {
     accountsList[index] = accountsList[index].replace('\r','') + '|';
   }
 
-  const results = [];
+  ACTION_RESULTS.value = [];
   console.log('🚀 Bắt đầu Reset', accountsList.length, 'tài khoản');
 
   for (let i = 0; i < accountsList.length; i++) {
@@ -318,9 +307,9 @@ const RunResetPassByJs = async function(accounts: string[]){
     
     try {
       const result = await loginAccount(account.split('|'));
-      await wait(15000);
+      await wait(delayResetPassword.value * 1000);
       
-      results.push({result: result, account: accountsList[i]});
+      ACTION_RESULTS.value.push({result: result, account: accountsList[i]});
     } catch (err) {
       console.error('❌ Lỗi khi login account:', account.split('|')[0], err);
       // Tạo error response với format chuẩn
@@ -332,7 +321,7 @@ const RunResetPassByJs = async function(accounts: string[]){
         error: true,
         timestamp: new Date().toISOString()
       };
-      results.push({result: errorResponse, account: accountsList[i]});
+      ACTION_RESULTS.value.push({result: errorResponse, account: accountsList[i]});
     }
   }
 
@@ -1052,7 +1041,18 @@ const addAccountToTable = function(account, status, description) {
               <VIcon size="20" icon="mdi-file-download-outline" class="mr-2" /> 
               Download kết quả
             </VBtn>
-            
+            <VTextField
+              v-model.number="delayResetPassword"
+              label="Delay giữa các lần (s)"
+              style="max-width: 240px;"
+              maxwidth="60"
+              type="number"
+              min="10"
+              variant="outlined"
+              density="compact"
+              prepend-inner-icon="ri-subtract-line"
+              append-inner-icon="ri-add-line"
+            />
             <!-- <VBtn 
               color="success" 
               variant="outlined" 
