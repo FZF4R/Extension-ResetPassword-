@@ -309,8 +309,8 @@ export const loginAccount = function (accountInfo: string[]) {
           type: 'LOGIN_FACEBOOK',
           uid: accountInfo[0],
           username: accountInfo[0],
-          email: accountInfo[0],
-          password: accountInfo[1],
+          email: accountInfo[1],
+          password: accountInfo[2],
           twoFactorCode: accountInfo[2] || '',
           oauth2: accountInfo[3] || '',
           proxy: '',
@@ -328,6 +328,7 @@ export const loginAccount = function (accountInfo: string[]) {
     }
   })
 }
+
 
 
 
