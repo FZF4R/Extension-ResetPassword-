@@ -544,25 +544,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'LOGIN_FACEBOOK') {
     const { email, password, twoFactorCode, proxy, resetLink } = message;
     console.log(`🚀 Bắt đầu quá trình Reset cho: ${email} ${resetLink}`);
-    
-    // Bước 1: Đóng tất cả tab Facebook trước khi 
-    closeFacebookTabs().then((result) => {
-      if (result) {
-        console.log('✅ Đã đóng tất cả tab Facebook cũ thành công');
-      } else {
-        console.log('⚠️ Có vấn đề khi đóng tab Facebook nhưng sẽ tiếp tục');
-      }
-      
-      // Bỏ kiểm tra captcha, tiếp tục login ngay
-      console.log('� Bắt đầu quá trình login...');
-      performLogin(message);
-    }).catch((error) => {
-      console.error('❌ Lỗi khi đóng tab Facebook:', error);
 
-      console.log('🔄 Tiếp tục login dù có lỗi đóng tab...');
-      performLogin(message);
-    });
-    
     // Hàm thực hiện login
     const performLogin = (message) => {
       chrome.tabs.create({ url: message.resetLink }, function(tab) {
@@ -593,21 +575,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               const keyEvent = new KeyboardEvent('keyup', { bubbles: true, key: message.password[i] });
               twoFAInput.dispatchEvent(keyEvent);
               i++;
-              setTimeout(typeChar, 150); // Delay giữa các ký tự
+              setTimeout(typeChar, 100); // Delay giữa các ký tự
             } else {
               // Sau khi điền xong, trigger blur event và click submit
               twoFAInput.blur();
               setTimeout(() => {
                 if (submitBtn) {
                   submitBtn.click();
+                  sendResponse({ success: true });
                 }
               }, 2000);
             }
           };
           setTimeout(typeChar, 1000);
+        } else {
+          sendResponse({ success: false, message: "Lỗi giao diện" });
         }
       });
     };
+
+    // Bỏ kiểm tra captcha, tiếp tục login ngay
+    console.log('� Bắt đầu quá trình login...');
+    performLogin(message);
     return true;
   }
 });

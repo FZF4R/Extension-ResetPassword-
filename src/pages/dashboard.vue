@@ -131,7 +131,7 @@ const copyAccountClipboard = function(rowItem){
 }
 
 const runLoginAction = function(){
-  var accounts = fileContent.value.split('\n').filter(x=>x && x.split('|').length >=2);
+  var accounts = fileContent.value.split('\n').filter(x=>x && x.split('|').length >=5);
   if (!accounts || accounts.length == 0 ) {
     alert("File nhập vào trống. Vui lòng kiểm tra lại");
     return;
@@ -317,10 +317,10 @@ const RunResetPassByJs = async function(accounts: string[]){
     console.log(`📋 Processing account ${i + 1}/${accountsList.length}:`, account.split('|')[0]);
     
     try {
-      const result = await loginAccount(account.split('|'), false, false);
+      const result = await loginAccount(account.split('|'));
       await wait(15000);
       
-      results.push(result);
+      results.push({result: result, account: accountsList[i]});
     } catch (err) {
       console.error('❌ Lỗi khi login account:', account.split('|')[0], err);
       // Tạo error response với format chuẩn
@@ -332,8 +332,7 @@ const RunResetPassByJs = async function(accounts: string[]){
         error: true,
         timestamp: new Date().toISOString()
       };
-      
-      results.push(errorResponse);
+      results.push({result: errorResponse, account: accountsList[i]});
     }
   }
 

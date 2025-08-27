@@ -320,15 +320,11 @@ export const loginAccount = function (accountInfo: string[]) {
           resolve(res);
         });
       } else {
-        // Fallback: thực hiện login trực tiếp trên trang hiện tại
-        loginFacebookExtensionJS(accountInfo[0], accountInfo[1], accountInfo[2], accountInfo[3]);
-        resolve({success: true, message: 'Login initiated'});
+        resolve(false);
+        console.log('chrome.runtime.sendMessage is not available.');
       }
     } catch (error) {
-      response.error_code = 100000;
-      response.error_message = error;
-      response.success = false;
-      resolve(response);
+      resolve(false);
     }
   })
 }
