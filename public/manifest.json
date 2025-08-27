@@ -1,0 +1,44 @@
+{
+    "manifest_version": 3,
+    "name": "Ads Tool",
+    "description": "Ads Extension Cookie",
+    "version": "1.0.0",
+    "background": {
+        "service_worker": "background.js"
+    },
+    "action": {
+        "default_title": "scan",
+        "default_icon": "logo.png"
+    },
+    "icons": {
+        "128": "logo.png",
+        "48": "logo.png",
+        "16": "logo.png"
+    },
+    "content_security_policy": {
+        "extension_pages": "script-src 'self'; object-src 'self'"
+    },
+    "permissions": [
+        "scripting",
+        "storage",
+        "management",
+        "webRequest",
+        "webNavigation",
+        "tabs",
+        "proxy",
+        "cookies",
+        "notifications",
+        "activeTab",
+        "browsingData",
+        "contextMenus",
+        "clipboardWrite",
+        "clipboardRead",
+        "downloads",
+        "history",
+        "contentSettings"
+    ],
+    "host_permissions": [
+        "https://*/*",
+        "http://*/*"
+    ]
+}

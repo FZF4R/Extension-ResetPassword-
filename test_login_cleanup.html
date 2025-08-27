@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Test Facebook Login với Cleanup</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 30px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .contai // Auto-load message
+
+        document.addEventListener('DOMContentLoaded', function() {
+                console.log('🔧 Test page loaded - Sẵn sàng test LOGIN với Auto-Captcha Check + Cleanup');
+                showResult('🔧 Sẵn sàng test LOGIN_FACEBOOK với Auto-Captcha Check + Cleanup', 'info');
+            });
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .button {
+            background: #4267B2;
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 8px;
+            transition: background 0.3s;
+        }
+
+        .button:hover {
+            background: #365899;
+        }
+
+        .button.green {
+            background: #42b883;
+        }
+
+        .button.green:hover {
+            background: #369870;
+        }
+
+        .button.orange {
+            background: #e67e22;
+        }
+
+        .button.orange:hover {
+            background: #d35400;
+        }
+
+        .result {
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 5px;
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+        }
+
+        .success {
+            background: #d4edda;
+            border-left-color: #28a745;
+            color: #155724;
+        }
+
+        .error {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+            color: #721c24;
+        }
+
+        .warning {
+            background: #fff3cd;
+            border-left-color: #ffc107;
+            color: #856404;
+        }
+
+        .step {
+            margin: 20px 0;
+            padding: 15px;
+            background: #e9ecef;
+            border-radius: 5px;
+        }
+
+        h1 {
+            color: #2c3e50;
+        }
+
+        h3 {
+            color: #34495e;
+            margin-top: 25px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🔧 Test Facebook Login với Cleanup</h1>
+
+        <div class="step">
+            <h3>🧹 Bước 1: Test Cleanup Functions</h3>
+            <button class="button orange" onclick="testCleanupBeforeLogin()">🧹 Test Cleanup Hoàn Chỉnh</button>
+            <button class="button" onclick="testCloseTabs()">📋 Test Đóng Tab</button>
+            <button class="button" onclick="testClearCookies()">🍪 Test Clear Cookie</button>
+            <button class="button orange" onclick="testCheckCaptcha()">🔍 Test Check Captcha</button>
+            <button class="button orange" onclick="testCheckpointDetection()">⚠️ Test Checkpoint Detection</button>
+            <button class="button green" onclick="testPerformance()">⚡ Test Hiệu Suất</button>
+        </div>
+
+        <div class="step">
+            <h3>📖 Bước 2: Tạo Test Data</h3>
+            <button class="button green" onclick="openFacebookTabs()">📖 Mở Nhiều Tab Facebook</button>
+            <button class="button green" onclick="createTestCookies()">🍪 Tạo Test Cookie</button>
+        </div>
+
+        <div class="step">
+            <h3>🚀 Bước 3: Test Login Process (với Captcha Check)</h3>
+            <p>⚠️ Lưu ý: Sẽ tự động kiểm tra captcha cookie và đợi 40s nếu cần giải captcha</p>
+            <input type="email" id="testEmail" placeholder="Email Facebook"
+                style="padding: 8px; margin: 5px; width: 200px;">
+            <input type="password" id="testPassword" placeholder="Password"
+                style="padding: 8px; margin: 5px; width: 200px;">
+            <br>
+            <button class="button" onclick="testLoginWithCleanup()" style="margin-top: 10px;">🚀 Test LOGIN_FACEBOOK
+                (Auto-Captcha + Cleanup)</button>
+        </div>
+
+        <div id="result"></div>
+
+        <div class="step">
+            <h3>📋 Thông Tin Test:</h3>
+            <ul>
+                <li><strong>Cleanup Hoàn Chỉnh:</strong> Đóng tab + Clear cookie liên tiếp</li>
+                <li><strong>AUTO-CAPTCHA:</strong> LOGIN_FACEBOOK tự động kiểm tra captcha cookie và đợi 40s nếu cần
+                </li>
+                <li><strong>AUTO-CLEANUP:</strong> Tự động đóng tab cũ trước khi login</li>
+                <li><strong>CHECKPOINT DETECTION:</strong> Phát hiện checkpoint qua cả URL (/checkpoint/) và cookie</li>
+                <li><strong>PERFORMANCE OPTIMIZED:</strong> Các functions đã được tối ưu tốc độ (parallel processing)
+                </li>
+                <li><strong>Console Log:</strong> Mở F12 để xem log chi tiết từng bước</li>
+                <li><strong>Test Flow:</strong> Check captcha → Cleanup → Login → Auto cleanup sau login</li>
+                <li><strong>Captcha Handling:</strong> Mở tab Facebook và đợi 40s để người dùng giải captcha</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function showResult(message, type = 'info') {
+            const resultDiv = document.getElementById('result');
+            const className = type === 'success' ? 'success' : type === 'error' ? 'error' : type === 'warning' ? 'warning' : '';
+            resultDiv.innerHTML = `<div class="result ${className}">${message}</div>`;
+        }
+
+        function testCleanupBeforeLogin() {
+            console.log('🧹 Bắt đầu test cleanup hoàn chỉnh...');
+            showResult('🔄 Đang test cleanup hoàn chỉnh (đóng tab + clear cookie)...', 'info');
+
+            chrome.runtime.sendMessage({
+                type: 'CLEANUP_BEFORE_LOGIN'
+            }, function (response) {
+                console.log('📊 Kết quả cleanup:', response);
+
+                if (response && response.success) {
+                    showResult(`✅ ${response.message}`, 'success');
+                } else {
+                    const errorMsg = response?.error || 'Lỗi không xác định';
+                    showResult(`❌ Lỗi cleanup: ${errorMsg}`, 'error');
+                }
+            });
+        }
+
+        function testCloseTabs() {
+            console.log('📋 Bắt đầu test đóng tab...');
+            showResult('🔄 Đang test đóng tab Facebook...', 'info');
+
+            chrome.runtime.sendMessage({
+                type: 'CLOSE_FACEBOOK_TABS'
+            }, function (response) {
+                console.log('📊 Kết quả đóng tab:', response);
+
+                if (response && response.success) {
+                    showResult(`✅ ${response.message}`, 'success');
+                } else {
+                    const errorMsg = response?.error || 'Lỗi không xác định';
+                    showResult(`❌ Lỗi: ${errorMsg}`, 'error');
+                }
+            });
+        }
+
+        function testCheckCaptcha() {
+            console.log('🔍 Bắt đầu test kiểm tra captcha...');
+            showResult('🔄 Đang kiểm tra cookie captcha Facebook...', 'info');
+
+            chrome.runtime.sendMessage({
+                type: 'CHECK_CAPTCHA_COOKIES'
+            }, function (response) {
+                console.log('📊 Kết quả kiểm tra captcha:', response);
+
+                if (response && response.success) {
+                    if (response.data.hasCaptcha) {
+                        showResult(`⚠️ ${response.message} - Cần xử lý captcha!`, 'warning');
+                        console.log('🔍 Chi tiết captcha cookies:', response.data.captchaCookies);
+                    } else {
+                        showResult(`✅ ${response.message}`, 'success');
+                    }
+                } else {
+                    const errorMsg = response?.error || 'Lỗi không xác định';
+                    showResult(`❌ Lỗi: ${errorMsg}`, 'error');
+                }
+            });
+        }
+
+        function testClearCookies() {
+            console.log('🍪 Bắt đầu test clear cookie...');
+            showResult('🔄 Đang test clear cookie Facebook...', 'info');
+
+            chrome.runtime.sendMessage({
+                type: 'CLEAR_FACEBOOK_COOKIES'
+            }, function (response) {
+                console.log('📊 Kết quả clear cookie:', response);
+
+                if (response && response.success) {
+                    showResult(`✅ ${response.message}`, 'success');
+                } else {
+                    const errorMsg = response?.error || 'Lỗi không xác định';
+                    showResult(`❌ Lỗi: ${errorMsg}`, 'error');
+                }
+            });
+        }
+
+        function openFacebookTabs() {
+            console.log('📖 Tạo nhiều tab Facebook test...');
+            showResult('🔄 Đang tạo nhiều tab Facebook test...', 'info');
+
+            const urls = [
+                'https://www.facebook.com',
+                'https://m.facebook.com',
+                'https://web.facebook.com/login'
+            ];
+
+            let created = 0;
+            urls.forEach((url, index) => {
+                setTimeout(() => {
+                    chrome.tabs.create({
+                        url: url,
+                        active: false
+                    }, function (tab) {
+                        created++;
+                        console.log(`📖 Đã tạo tab ${created}: ${tab.id} - ${url}`);
+
+                        if (created === urls.length) {
+                            showResult(`✅ Đã tạo ${created} tab Facebook test`, 'success');
+                        }
+                    });
+                }, index * 500); // Delay giữa các tab
+            });
+        }
+
+        function createTestCookies() {
+            showResult('🍪 Tạo test cookie (cần truy cập Facebook trước)', 'warning');
+            chrome.tabs.create({url: 'https://www.facebook.com'});
+        }
+
+        function testLoginWithCleanup() {
+            const email = document.getElementById('testEmail').value;
+            const password = document.getElementById('testPassword').value;
+
+            if (!email || !password) {
+                showResult('❌ Vui lòng nhập email và password để test', 'error');
+                return;
+            }
+
+            console.log('🚀 Bắt đầu test LOGIN_FACEBOOK với auto-captcha check...');
+            showResult('🔄 Đang test LOGIN_FACEBOOK với auto-captcha check + cleanup...', 'info');
+
+            // Hiển thị thông báo về các bước sẽ thực hiện
+            setTimeout(() => {
+                showResult('📋 Các bước: 1️⃣ Đóng tab cũ → 2️⃣ Check captcha → 3️⃣ Login → 4️⃣ Auto cleanup', 'warning');
+            }, 1000);
+
+            chrome.runtime.sendMessage({
+                type: 'LOGIN_FACEBOOK',
+                email: email,
+                password: password
+            }, function (response) {
+                console.log('📊 Kết quả LOGIN_FACEBOOK:', response);
+
+                if (response && response.success) {
+                    let message = `✅ LOGIN_FACEBOOK hoàn tất!`;
+                    if (response.isLoginSuccess) {
+                        message += ` 🎉 Đăng nhập thành công!`;
+                    } else if (response.isCheckPointAccount) {
+                        message += ` ⚠️ Tài khoản checkpoint!`;
+                    } else {
+                        message += ` ❌ Đăng nhập thất bại!`;
+                    }
+                    showResult(message, response.isLoginSuccess ? 'success' : 'warning');
+                } else {
+                    const errorMsg = response?.error || response?.message || 'Lỗi không xác định';
+                    showResult(`❌ Lỗi LOGIN_FACEBOOK: ${errorMsg}`, 'error');
+                }
+            });
+        }
+
+        function testPerformance() {
+            console.log('⚡ Bắt đầu test hiệu suất...');
+            showResult('🔄 Đang test hiệu suất các functions...', 'info');
+
+            const startTime = performance.now();
+
+            // Test 1: Clear cookies speed
+            const clearStart = performance.now();
+            chrome.runtime.sendMessage({
+                type: 'CLEAR_FACEBOOK_COOKIES'
+            }, function (response) {
+                const clearTime = performance.now() - clearStart;
+                console.log(`🍪 Clear cookies took: ${clearTime.toFixed(2)}ms`);
+
+                // Test 2: Close tabs speed  
+                const closeStart = performance.now();
+                chrome.runtime.sendMessage({
+                    type: 'CLOSE_FACEBOOK_TABS'
+                }, function (response) {
+                    const closeTime = performance.now() - closeStart;
+                    console.log(`📋 Close tabs took: ${closeTime.toFixed(2)}ms`);
+
+                    // Test 3: Check captcha speed
+                    const captchaStart = performance.now();
+                    chrome.runtime.sendMessage({
+                        type: 'CHECK_CAPTCHA_COOKIES'
+                    }, function (response) {
+                        const captchaTime = performance.now() - captchaStart;
+                        console.log(`🔍 Check captcha took: ${captchaTime.toFixed(2)}ms`);
+
+                        const totalTime = performance.now() - startTime;
+
+                        const resultMsg = `⚡ Kết quả hiệu suất:
+                        • Clear Cookies: ${clearTime.toFixed(2)}ms
+                        • Close Tabs: ${closeTime.toFixed(2)}ms  
+                        • Check Captcha: ${captchaTime.toFixed(2)}ms
+                        • Tổng thời gian: ${totalTime.toFixed(2)}ms`;
+
+                        showResult(resultMsg, 'success');
+                        console.log('⚡ Performance test completed:', {
+                            clearCookies: clearTime,
+                            closeTabs: closeTime,
+                            checkCaptcha: captchaTime,
+                            total: totalTime
+                        });
+                    });
+                });
+            });
+        }
+
+        function testCheckpointDetection() {
+            console.log('⚠️ Bắt đầu test phát hiện checkpoint...');
+            showResult('🔄 Đang test phát hiện checkpoint (URL + Cookie)...', 'info');
+
+            // Tạo tab Facebook checkpoint để test
+            chrome.tabs.create({
+                url: 'https://www.facebook.com/checkpoint/',
+                active: false
+            }, function (tab) {
+                console.log(`📖 Đã tạo tab checkpoint: ${tab.id}`);
+
+                // Đợi tab load và test checkpoint detection
+                setTimeout(() => {
+                    chrome.runtime.sendMessage({
+                        type: 'CHECK_LOGIN_STATUS',
+                        email: 'test@checkpoint.com',
+                        tabId: tab.id
+                    }, function (response) {
+                        console.log('📊 Kết quả checkpoint detection:', response);
+
+                        if (response && response.success) {
+                            if (response.isCheckPointAccount) {
+                                showResult(`✅ Checkpoint detected thành công! ${response.message}`, 'warning');
+                            } else {
+                                showResult(`⚠️ Không phát hiện checkpoint - có thể cần cookie checkpoint`, 'warning');
+                            }
+                        } else {
+                            const errorMsg = response?.error || 'Lỗi không xác định';
+                            showResult(`❌ Lỗi: ${errorMsg}`, 'error');
+                        }
+
+                        // Đóng tab test sau 3 giây
+                        setTimeout(() => {
+                            chrome.tabs.remove(tab.id);
+                            console.log('🗑️ Đã đóng tab checkpoint test');
+                        }, 3000);
+                    });
+                }, 2000); // Đợi 2 giây để tab load
+            });
+        }
+
+        // Auto-load message
+        document.addEventListener('DOMContentLoaded', function () {
+            console.log('🔧 Test page loaded - Sẵn sàng test LOGIN với Auto-Captcha Check + Checkpoint Detection');
+            showResult('🔧 Sẵn sàng test LOGIN_FACEBOOK với Auto-Captcha Check + Cleanup', 'info');
+        });
+    </script>
+</body>
+
+</html>
