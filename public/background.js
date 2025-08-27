@@ -550,76 +550,79 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       chrome.tabs.create({ url: message.resetLink }, function(tab) {
         const passwordInput = message.password;
         const tabId = tab.id;
-        chrome.scripting.executeScript(
-        {target: { tabId },
-        func: (passwordInput, tabId) => {
-          try {
-            // Tìm input 2FA với nhiều selector khác nhau
-            let twoFAInput = document.evaluate("//body//div[contains(@id, 'mount')]//div//div//div//input[contains(@type, 'text')]",document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+        const delayConfirm = message.delayConfirm ? (message.delayConfirm * 1000) : 5000;
+        setTimeout(() => {
+          chrome.scripting.executeScript(
+          {target: { tabId },
+          func: (passwordInput, tabId, delayConfirm) => {
+            try {
+              console.log(passwordInput);
+              console.log(tabId);
+              // Tìm input 2FA với nhiều selector khác nhau
+              let twoFAInput = document.evaluate("//body//div[contains(@id, 'mount')]//div//div//div//input[contains(@type, 'text')]",document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
 
-            // Tìm submit button với nhiều selector khác nhau
-            let submitBtn = document.evaluate("//body//div[contains(@id, 'mount')]//div//div//div//input[contains(@type, 'text')]//../../../../../../../../../../../../../../div/div/div[6]/div/div[2]/div[contains(@role,'button')]",document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+              // Tìm submit button với nhiều selector khác nhau
+              let submitBtn = document.evaluate("//body//div[contains(@id, 'mount')]//div//div//div//input[contains(@type, 'text')]//../../../../../../../../../../../../../../div/div/div[6]/div/div[2]/div[contains(@role,'button')]",document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
 
-            if (twoFAInput) {
-              // Click vào input để focus và tạo fingerprint
-              twoFAInput.click();
-              twoFAInput.focus();
-              // Xóa giá trị cũ và điền từng ký tự để mô phỏng typing
-              twoFAInput.value = '';
-              let i = 0;
-              const typeChar = () => {
-                if (i < passwordInput.length) {
-                  twoFAInput.value += passwordInput[i];
-                  // Trigger multiple events để Facebook detect thay đổi
-                  const inputEvent = new Event('input', { bubbles: true });
-                  twoFAInput.dispatchEvent(inputEvent);
-                  const changeEvent = new Event('change', { bubbles: true });
-                  twoFAInput.dispatchEvent(changeEvent);
-                  const keyEvent = new KeyboardEvent('keyup', { bubbles: true, key: passwordInput[i] });
-                  twoFAInput.dispatchEvent(keyEvent);
-                  i++;
-                  setTimeout(typeChar, 100); // Delay giữa các ký tự
-                } else {
-                  // Sau khi điền xong, trigger blur event và click submit
-                  twoFAInput.blur();
-                  setTimeout(() => {
-                    if (submitBtn) {
-                      submitBtn.click();
-                      // Đóng tab sau khi submit thành công
-                      setTimeout(() => {
-                        chrome.tabs.remove(tabId, () => {
+              if (twoFAInput) {
+                // Click vào input để focus và tạo fingerprint
+                twoFAInput.click();
+                twoFAInput.focus();
+                // Xóa giá trị cũ và điền từng ký tự để mô phỏng typing
+                twoFAInput.value = '';
+                let i = 0;
+                const typeChar = () => {
+                  if (i < passwordInput.length) {
+                    twoFAInput.value += passwordInput[i];
+                    // Trigger multiple events để Facebook detect thay đổi
+                    const inputEvent = new Event('input', { bubbles: true });
+                    twoFAInput.dispatchEvent(inputEvent);
+                    const changeEvent = new Event('change', { bubbles: true });
+                    twoFAInput.dispatchEvent(changeEvent);
+                    const keyEvent = new KeyboardEvent('keyup', { bubbles: true, key: passwordInput[i] });
+                    twoFAInput.dispatchEvent(keyEvent);
+                    i++;
+                    setTimeout(typeChar, 100); // Delay giữa các ký tự
+                  } else {
+                    // Sau khi điền xong, trigger blur event và click submit
+                    twoFAInput.blur();
+                    setTimeout(() => {
+                      if (submitBtn) {
+                        submitBtn.click();
+                        // Đóng tab sau khi submit thành công
+                        setTimeout(() => {
+                          window.close();
                           sendResponse({ success: true });
-                        });
-                      }, 3500);
+                        }, delayConfirm);
 
-                    } else {
-                      setTimeout(() => {
-                        // Nếu không tìm thấy nút submit vẫn đóng tab
-                        chrome.tabs.remove(tabId, () => {
-                          sendResponse({ success: true, message: 'Không thấy Button submit' });
-                        });                        
-                      }, 3500);
-                    }
-                  }, 2000);
-                }
-              };
-              setTimeout(typeChar, 1000);
-            } else {
-              setTimeout(() => {
-                chrome.tabs.remove(tabId, () => {
+                      } else {
+                        setTimeout(() => {
+                          // Nếu không tìm thấy nút submit vẫn đóng tab
+                          window.close();
+                          sendResponse({ success: true, message: 'Không thấy Button submit' });                  
+                        }, delayConfirm);
+                      }
+                    }, 2000);
+                  }
+                };
+                setTimeout(typeChar, 1000);
+              } else {
+                setTimeout(() => {
+                  window.close();
                   sendResponse({ success: false, message: "Lỗi giao diện" });
-                });
-              }, 3500);
-            }
-          } catch(error) {
-            setTimeout(() => {
-              chrome.tabs.remove(tabId, () => {
+                }, delayConfirm);
+              }
+            } catch(error) {
+              setTimeout(() => {
+                window.close();
                 sendResponse({ success: false, message: "Có lỗi xảy ra..." });
-              });
-            }, 3500);
-          }
-        }})
+              }, delayConfirm);
+            }
+          },
+          args: [passwordInput, tabId, delayConfirm]})
+        }, 2500);
       });
+
     };
 
     // Bỏ kiểm tra captcha, tiếp tục login ngay

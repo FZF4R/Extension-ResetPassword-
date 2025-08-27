@@ -33,7 +33,8 @@ interface DataItem {
 }
 
 const data : DataItem[] = ref([])
-const delayResetPassword: number = ref(15);
+const delayResetPassword: number = ref(20);
+const newPasswordAccount = ref("Anhemminh123");
 const status: Record<DataItem['status'], string> = {
   1: 'Authen2FA',
   2: 'Live',
@@ -306,7 +307,10 @@ const RunResetPassByJs = async function(accounts: string[]){
     console.log(`📋 Processing account ${i + 1}/${accountsList.length}:`, account.split('|')[0]);
     
     try {
-      const result = await loginAccount(account.split('|'));
+      const newPassword = newPasswordAccount.value;
+      var inputInfo = account.split('|');
+      inputInfo[2] = newPassword;
+      const result = await loginAccount(inputInfo, newPassword);
       await wait(delayResetPassword.value * 1000);
       
       ACTION_RESULTS.value.push({result: result, account: accountsList[i]});
@@ -1042,17 +1046,26 @@ const addAccountToTable = function(account, status, description) {
               Download kết quả
             </VBtn>
             <VTextField
+              v-model="newPasswordAccount"
+              label="Password mới"
+              style="max-width: 240px;"
+              type="text"
+              variant="outlined"
+              density="compact"
+            />
+            <VTextField
               v-model.number="delayResetPassword"
               label="Delay giữa các lần (s)"
               style="max-width: 240px;"
-              maxwidth="60"
+              max="600"
               type="number"
-              min="10"
+              min="15"
               variant="outlined"
               density="compact"
               prepend-inner-icon="ri-subtract-line"
               append-inner-icon="ri-add-line"
             />
+
             <!-- <VBtn 
               color="success" 
               variant="outlined" 
