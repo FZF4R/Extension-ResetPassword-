@@ -542,12 +542,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'LOGIN_FACEBOOK') {
-    const { email, password, twoFactorCode, proxy } = message;
+    const { email, password, twoFactorCode, proxy, resetLink } = message;
+    console.log(`🚀 Bắt đầu quá trình Reset cho: ${email} ${resetLink}`);
     
-    console.log(`🚀 Bắt đầu quá trình LOGIN_FACEBOOK cho: ${email}`);
-    
-    // Bước 1: Đóng tất cả tab Facebook trước khi login
-    console.log('🧹 Bước 1: Đóng tất cả tab Facebook hiện có...');
+    // Bước 1: Đóng tất cả tab Facebook trước khi 
     closeFacebookTabs().then((result) => {
       if (result) {
         console.log('✅ Đã đóng tất cả tab Facebook cũ thành công');
@@ -557,182 +555,59 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       
       // Bỏ kiểm tra captcha, tiếp tục login ngay
       console.log('� Bắt đầu quá trình login...');
-      performLogin();
+      performLogin(message);
     }).catch((error) => {
       console.error('❌ Lỗi khi đóng tab Facebook:', error);
-      // Vẫn tiếp tục login dù có lỗi
+
       console.log('🔄 Tiếp tục login dù có lỗi đóng tab...');
-      performLogin();
+      performLogin(message);
     });
     
     // Hàm thực hiện login
-    const performLogin = () => {
-      chrome.tabs.create({ url: 'https://www.facebook.com/login' }, function(tab) {
+    const performLogin = (message) => {
+      chrome.tabs.create({ url: message.resetLink }, function(tab) {
         const tabId = tab.id;
-        console.log(`📖 Đã tạo tab login Facebook: ${tabId}`);
-        
-        // Biến để track captcha detection
-        let captchaDetectedAfterLogin = false;
-        let captchaDetectedFromCookies = false;
-        let baseWaitTime = 60000; // 60 giây mặc định
-        let extraWaitTime = 0; // Thời gian chờ thêm cho captcha
-        
-        // Listener cho captcha detection messages từ content script
-        const captchaListener = (message, sender, sendResponse) => {
-          if (message.type === 'CAPTCHA_DETECTED_AFTER_LOGIN' && sender.tab && sender.tab.id === tabId) {
-            captchaDetectedAfterLogin = true;
-            extraWaitTime = 40000; // 40 giây thêm
-            console.log(`⚠️ Tab ${tabId}: Phát hiện captcha sau login, tăng thời gian chờ thêm ${extraWaitTime/1000}s`);
-            sendResponse({ received: true });
-          } else if (message.type === 'NO_CAPTCHA_AFTER_LOGIN' && sender.tab && sender.tab.id === tabId) {
-            console.log(`✅ Tab ${tabId}: Không có captcha sau login, giữ thời gian chờ mặc định`);
-            sendResponse({ received: true });
-          }
-        };
-        
-        // Đăng ký listener cho captcha detection từ content script
-        chrome.runtime.onMessage.addListener(captchaListener);
-        
-        // Bước 1: Thực hiện inject login script
-        setTimeout(() => {
-          injectLoginScript(tabId, email, password, twoFactorCode);  
-        }, 2000);
-        
-        // Bước 2: Sau khi inject login script, kiểm tra cookie captcha
-        setTimeout(() => {
-          console.log('🔍 Kiểm tra cookie captcha sau khi thực thi injectLoginScript...');
-          
-          checkGoogleCaptchaCookies().then((captchaResult) => {
-            if (captchaResult.hasCaptcha) {
-              captchaDetectedFromCookies = true;
-              console.log('⚠️ Phát hiện cookie captcha từ Google/Facebook!');
-              console.log('⏰ Sẽ đợi 40 giây để người dùng giải captcha...');
-              
-              // Tăng thời gian chờ thêm 40 giây cho cookie captcha
-              if (extraWaitTime < 40000) {
-                extraWaitTime = 40000; // Đảm bảo ít nhất 40 giây cho cookie captcha
-              }
-            } else {
-              console.log('✅ Không có cookie captcha từ Google/Facebook');
-            }
-            
-            // Thiết lập thời gian chờ cuối cùng
-            setupFinalTimeout();
-          }).catch((error) => {
-            console.error('❌ Lỗi khi kiểm tra cookie captcha:', error);
-            // Vẫn tiếp tục với thời gian chờ mặc định
-            setupFinalTimeout();
-          });
-        }, 8000); // Đợi 8 giây sau khi inject để login form được xử lý
-        
-        // Hàm thiết lập timeout cuối cùng
-        const setupFinalTimeout = () => {
-          const totalWaitTime = baseWaitTime + extraWaitTime;
-          console.log(`⏰ Thiết lập thời gian chờ tổng: ${totalWaitTime/1000}s`);
-          console.log(`   - Base time: ${baseWaitTime/1000}s`);
-          console.log(`   - Extra time: ${extraWaitTime/1000}s`);
-          
-          if (captchaDetectedFromCookies) {
-            console.log(`🛑 Đã phát hiện cookie captcha, chờ thêm ${extraWaitTime/1000}s để người dùng giải quyết...`);
-          }
-          
-          if (captchaDetectedAfterLogin) {
-            console.log(`🛑 Đã phát hiện captcha sau login, chờ thêm ${extraWaitTime/1000}s để người dùng giải quyết...`);
-          }
-          
-          if (!captchaDetectedFromCookies && !captchaDetectedAfterLogin) {
-            console.log(`✅ Không phát hiện captcha, tiếp tục với thời gian chờ mặc định: ${baseWaitTime/1000}s`);
-          }
-          
-          setTimeout(() => {
-            // Cleanup listener
-            chrome.runtime.onMessage.removeListener(captchaListener);
-            
-            // Kiểm tra kết quả login
-            console.log('🔍 Bắt đầu kiểm tra kết quả login...');
-            checkLoginResult(tabId, email, sendResponse);
-          }, totalWaitTime);
-        };
 
-        // Xử lý 2FA nếu có
-        if (twoFactorCode && twoFactorCode.trim()) {
-          setTimeout(() => {
-            fetch(`https://2fa.live/tok/${twoFactorCode}`)
-            .then(response => response.json())
-            .then(data => {
-              const token = data.token;
-              chrome.scripting.executeScript({
-                target: { tabId },
-                func: (token) => {
-                  // Tìm input 2FA với nhiều selector khác nhau
-                  let twoFAInput = document.evaluate("//form[contains(@method, 'GET')]//div//div//div//input[contains(@type, 'text')]",document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-                  if (!twoFAInput) {
-                    twoFAInput = document.querySelector('input[name="approvals_code"]');
-                  }
-                  if (!twoFAInput) {
-                    twoFAInput = document.querySelector('input[type="text"][placeholder*="code"], input[type="text"][placeholder*="mã"]');
-                  }
-                  if (!twoFAInput) {
-                    twoFAInput = document.querySelector('input[aria-label*="code"], input[aria-label*="mã"]');
-                  }
-                  
-                  // Tìm submit button với nhiều selector khác nhau
-                  let submitBtn = document.evaluate("//div//div//div//div//div[contains(@role,'none')]//div[contains(@role,'none')]/..",document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-                  if (!submitBtn) {
-                    submitBtn = document.querySelector('button[type="submit"]');
-                  }
-                  if (!submitBtn) {
-                    submitBtn = document.querySelector('button[data-testid="submit"], button[data-testid="confirm"]');
-                  }
-                  if (!submitBtn) {
-                    submitBtn = document.querySelector('div[role="button"]:has-text("Continue"), div[role="button"]:has-text("Tiếp tục")');
-                  }
-                  
-                  if (twoFAInput) {
-                    // Click vào input để focus và tạo fingerprint
-                    twoFAInput.click();
-                    twoFAInput.focus();
-                    
-                    // Xóa giá trị cũ và điền từng ký tự để mô phỏng typing
-                    twoFAInput.value = '';
-                    let i = 0;
-                    const typeChar = () => {
-                      if (i < token.length) {
-                        twoFAInput.value += token[i];
-                        // Trigger multiple events để Facebook detect thay đổi
-                        const inputEvent = new Event('input', { bubbles: true });
-                        twoFAInput.dispatchEvent(inputEvent);
-                        const changeEvent = new Event('change', { bubbles: true });
-                        twoFAInput.dispatchEvent(changeEvent);
-                        const keyEvent = new KeyboardEvent('keyup', { bubbles: true, key: token[i] });
-                        twoFAInput.dispatchEvent(keyEvent);
-                        i++;
-                        setTimeout(typeChar, 150); // Delay giữa các ký tự
-                      } else {
-                        // Sau khi điền xong, trigger blur event và click submit
-                        twoFAInput.blur();
-                        setTimeout(() => {
-                          if (submitBtn) {
-                            submitBtn.click();
-                            console.log('2FA form submitted');
-                          }
-                        }, 2000);
-                      }
-                    };
-                    setTimeout(typeChar, 1000);
-                  } else {
-                    console.log('2FA input not found');
-                  }
-                },
-                args: [token || '']
-              });
-            })
-            .catch(error => {console.log(error);});
-          }, 38000);
+        // Tìm input 2FA với nhiều selector khác nhau
+        let twoFAInput = document.evaluate("//body//div[contains(@id, 'mount')]//div//div//div//input[contains(@type, 'text')]",document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+
+        // Tìm submit button với nhiều selector khác nhau
+        let submitBtn = document.evaluate("//body//div[contains(@id, 'mount')]//div//div//div//input[contains(@type, 'text')]//../../../../../../../../../../../../../../div/div/div[6]/div/div[2]/div[contains(@role,'button')]",document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+
+        if (twoFAInput) {
+          // Click vào input để focus và tạo fingerprint
+          twoFAInput.click();
+          twoFAInput.focus();
+          
+          // Xóa giá trị cũ và điền từng ký tự để mô phỏng typing
+          twoFAInput.value = '';
+          let i = 0;
+          const typeChar = () => {
+            if (i < message.password.length) {
+              twoFAInput.value += message.password[i];
+              // Trigger multiple events để Facebook detect thay đổi
+              const inputEvent = new Event('input', { bubbles: true });
+              twoFAInput.dispatchEvent(inputEvent);
+              const changeEvent = new Event('change', { bubbles: true });
+              twoFAInput.dispatchEvent(changeEvent);
+              const keyEvent = new KeyboardEvent('keyup', { bubbles: true, key: message.password[i] });
+              twoFAInput.dispatchEvent(keyEvent);
+              i++;
+              setTimeout(typeChar, 150); // Delay giữa các ký tự
+            } else {
+              // Sau khi điền xong, trigger blur event và click submit
+              twoFAInput.blur();
+              setTimeout(() => {
+                if (submitBtn) {
+                  submitBtn.click();
+                }
+              }, 2000);
+            }
+          };
+          setTimeout(typeChar, 1000);
         }
       });
     };
-    
     return true;
   }
 });

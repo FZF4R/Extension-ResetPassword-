@@ -53,9 +53,9 @@ const statusColor: Record<typeof status[number], string> = {
 const headers = [
   'Trạng thái',
   'UID',
-  'Pass',
-  'Token',
-  'Cookie',
+  'Hot Mail',
+  'PassMail',
+  'Oauth2',
   ''
 ]
 
@@ -81,27 +81,6 @@ interface Statistic {
 }
 
 const statistics: Statistic[] = [
-  {
-    id: 1,
-    title: 'Thành công',
-    stats: 0,
-    icon: 'mdi-account-check-outline',
-    color: 'success',
-  },
-  {
-    id: 2,
-    title: 'Checkpoint',
-    stats: 0,
-    icon: 'mdi-account-alert-outline',
-    color: 'warning',
-  },
-  {
-    id: 3,
-    title: 'Lỗi/Thất bại',
-    stats: 0,
-    icon: 'mdi-account-cancel-outline',
-    color: 'error',
-  },
 ]
 
 const { global } = useTheme()
@@ -135,7 +114,7 @@ const loginRunning = ref(false);
 const blockedAllProxy = ref(false);
 const DELAY_REQUEST = ref(250); // Delay giữa mỗi lần call Request Tránh lỗi 613
 const LIMIT_REQUEST_PER_PROXY = ref(10); // Số lần chạy Request với Proxy 
-const BREAKING_TIME_PER_LIMIT_REQUEST = ref(10); // Thời gian delay giữa LIMIT_REQUEST_PER_PROXY lần chạy request với Proxy
+const BREAKING_TIME_PER_LIMIT_REQUEST = ref(1); // Thời gian delay giữa LIMIT_REQUEST_PER_PROXY lần chạy request với Proxy
 
 const copyAccountClipboard = function(rowItem){
   //console.log(rowItem);
@@ -171,20 +150,22 @@ const runLoginAction = function(){
   errorAccounts.length = 0;
   authenAccounts.length = 0;
   
-  if (isProxy.value) {
-    loginRunning.value = true;
-    objProxies.value = [];
-    // Chỉ sử dụng 1 proxy duy nhất
-    if (proxies.value && proxies.value.trim()) {
-      objProxies.value.push({proxy: proxies.value.trim(), isBlocked_1: false, isBlocked_2: false});
-    }
-    RunLoginByJs(accounts, objProxies);
-    // RunLoginWithProxy(accounts, objProxies);
-    return;
-  } else {
-    loginRunning.value = true;
-    RunLoginWithDcom(accounts);
-  }
+  RunResetPassByJs(accounts);
+
+  // if (isProxy.value) {
+  //   loginRunning.value = true;
+  //   objProxies.value = [];
+  //   // Chỉ sử dụng 1 proxy duy nhất
+  //   if (proxies.value && proxies.value.trim()) {
+  //     objProxies.value.push({proxy: proxies.value.trim(), isBlocked_1: false, isBlocked_2: false});
+  //   }
+  //   RunResetPassByJs(accounts, objProxies);
+  //   // RunLoginWithProxy(accounts, objProxies);
+  //   return;
+  // } else {
+  //   loginRunning.value = true;
+  //   RunLoginWithDcom(accounts);
+  // }
 }
 
 const RunLoginWithDcom = async function(accounts: string[]){
@@ -316,6 +297,50 @@ const GetRandomAccountValid = function(){
 
 var indexRunningAccount = ref(0)
 
+
+const RunResetPassByJs = async function(accounts: string[]){
+  indexRunningAccount.value = 0;
+  let index = 0;
+  var breakTimeStep = BREAKING_TIME_PER_LIMIT_REQUEST.value * 1000; // Delay giữa {threadActionCount} luồng 
+
+  var accountsList = JSON.parse(JSON.stringify(accounts));
+  for (let index = 0; index < accountsList.length; index++) {
+    accountsList[index] = accountsList[index].replace('\r','') + '|';
+  }
+
+  const results = [];
+  console.log('🚀 Bắt đầu Reset', accountsList.length, 'tài khoản');
+
+  for (let i = 0; i < accountsList.length; i++) {
+    
+    const account = accountsList[i];
+    console.log(`📋 Processing account ${i + 1}/${accountsList.length}:`, account.split('|')[0]);
+    
+    try {
+      const result = await loginAccount(account.split('|'), false, false);
+      await wait(15000);
+      
+      results.push(result);
+    } catch (err) {
+      console.error('❌ Lỗi khi login account:', account.split('|')[0], err);
+      // Tạo error response với format chuẩn
+      const errorResponse = {
+        success: false,
+        isLoginSuccess: false,
+        isCheckPointAccount: false,
+        message: err.message || err.toString(),
+        error: true,
+        timestamp: new Date().toISOString()
+      };
+      
+      results.push(errorResponse);
+    }
+  }
+
+  console.log('✅ Hoàn thành login cho tất cả tài khoản');
+  loginRunning.value = false;
+}
+
 const RunLoginByJs = async function(accounts: string[], tempObjProxies: Array[]){
   indexRunningAccount.value = 0;
 
@@ -342,12 +367,12 @@ const RunLoginByJs = async function(accounts: string[], tempObjProxies: Array[])
     }
   }
 
-  console.log('🚀 Bắt đầu login với Chrome Extension cho', accountsList.length, 'tài khoản');
+  console.log('🚀 Bắt đầu Reset', accountsList.length, 'tài khoản');
   console.log(accountsList);
   
   for (let i = 0; i < accountsList.length; i++) {
     if (!loginRunning.value) {
-      console.log('❌ Login bị dừng bởi user');
+      console.log('❌ Reset bị dừng bởi user');
       break;
     }
     
@@ -963,80 +988,13 @@ const addAccountToTable = function(account, status, description) {
 
 <template>
   <VRow class="match-height">
-    <VCol
-      cols="12"
-      md="6"
-    >
-    <VCard
-    title="Cấu hình sản phẩm"
-    v-bind:subtitle="getProxyCount()"
-    class="position-relative"
-  >
-  <VRow>
-    <VCol cols="11">
-      <VRow class="ml-2">
-        <VCol    
-          cols="4"
-          md="4">
-            <VCheckbox
-              v-model="isProxy"
-              label="Chạy Proxy"
-              @change="changeCheckboxOption"
-              disabled
-            />
-            <VCheckbox
-              class="mt-2"
-              disabled
-              v-model="isDcom"
-              label="Chạy Dcom"
-              @change="changeCheckboxOptionDcom"
-            />
-        </Vcol>
-        <VCol cols="8" class="pb-2">
-          <v-text-field v-bind:disabled="!isProxy" v-model="proxies" label="IP:Port or IP:Port:user:pass"></v-text-field>
-        </Vcol>
-        
-        <VCol cols="4" class="pb-2 mb-4" v-show="!isProxy">
-          <VTextField type="number" rows="1"  v-bind:disabled="isProxy" v-model="threadCountReset" label="Số luồng chạy"></VTextField>
-        </Vcol>
-        <VCol cols="4" class="pb-2" v-show="!isProxy">
-          <VTextField rows="1"  v-bind:disabled="isProxy" v-model="dcomName" label="Tên Dcom"></VTextField>
-        </Vcol>
-        <VCol cols="4" class="pb-2" v-show="!isProxy">
-          <VTextField type="number" rows="1" v-bind:disabled="isProxy" v-model="delayResetDcom" label="Delay Reset (s)"></VTextField>
-        </Vcol>
-
-        <!-- <VCol cols="4" class="pb-2 mb-4"  v-show="isProxy">
-          <VTextField type="number" rows="1"  v-model="LIMIT_REQUEST_PER_PROXY" disabled label="Requests/ip"></VTextField>
-        </Vcol>
-        <VCol cols="4" class="pb-2" v-show="isProxy">
-          <VTextField type="number" rows="1" v-model="DELAY_REQUEST" disabled label="Delay giữa mỗi Request (ms) mili giây"></VTextField>
-        </Vcol>
-        <VCol cols="4" class="pb-2" v-show="isProxy">
-          <VTextField type="number" rows="1" v-model="BREAKING_TIME_PER_LIMIT_REQUEST" disabled label="Delay giữa mỗi lần chạy (s) giây"></VTextField>
-        </Vcol> -->
-      </VRow>
-    </Vcol>
-
-
-    <!-- Trophy -->
-      <VCol cols="1">
-        <VImg
-          :src="trophy"
-          class="trophy"
-        />
-      </Vcol>
-    </VRow>
-  </VCard>
-    </VCol>
 
     <VCol
       cols="12"
-      md="6"
     >
     <VCard>
     <VCardItem>
-      <VCardTitle>Thống kê</VCardTitle>
+      <VCardTitle>Đổi mật khẩu</VCardTitle>
 
       <template #append>
         <div class="me-n3">
@@ -1070,7 +1028,7 @@ const addAccountToTable = function(account, status, description) {
               size="default"
             >                 
               <VIcon size="20" icon="mdi-account-lock-open-outline" class="mr-2" />
-              Login
+              Reset Pass
             </VBtn>
             
             <VBtn 
@@ -1093,10 +1051,10 @@ const addAccountToTable = function(account, status, description) {
               :disabled="data.length === 0"
             >
               <VIcon size="20" icon="mdi-file-download-outline" class="mr-2" /> 
-              Download All
+              Download kết quả
             </VBtn>
             
-            <VBtn 
+            <!-- <VBtn 
               color="success" 
               variant="outlined" 
               @click="downloadByStatus('live')"
@@ -1127,7 +1085,7 @@ const addAccountToTable = function(account, status, description) {
             >
               <VIcon size="16" icon="mdi-account-cancel" class="mr-1" /> 
               Error ({{ errorCount }})
-            </VBtn>
+            </VBtn> -->
           </div>
         </div>
       </h6>

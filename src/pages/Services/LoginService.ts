@@ -293,47 +293,36 @@ export const resetDcom = async function (dcomName: string) {
   }
 }
 
-export const loginAccount = function (accountInfo: string[], isBlock_1: bool = false, isBlock_2: bool = false) {
-  return new Promise(async (resolve, reject) => {
-    await clearFacebookCookies();
-    let response = {};
-    try {
-      // Nếu có proxy, setup proxy trước khi login
-      if (accountInfo.length >= 4 && accountInfo[3] && accountInfo[3].trim()) {
-        const proxyInfo = accountInfo[3].split(':');
-        if (proxyInfo.length >= 2) {
-          // Setup proxy trước
-          setExtensionProxy(accountInfo[3], function(proxyRes) {
-            console.log('Proxy đã được setup:', proxyRes);
-            // Sau khi setup proxy thành công, thực hiện login
-            performLogin();
-          });
-        } else {
-          // Proxy format không hợp lệ, login không có proxy
-          performLogin();
-        }
-      } else {
-        // Không có proxy, login trực tiếp
-        performLogin();
-      }
 
-      function performLogin() {
-        // Gửi message tới background để mở tab và thực hiện login
-        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
-          chrome.runtime.sendMessage({
-            type: 'LOGIN_FACEBOOK',
-            email: accountInfo[0],
-            password: accountInfo[1],
-            twoFactorCode: accountInfo[2] || '',
-            proxy: accountInfo[3] || ''
-          }, function(res) {
-            resolve(res);
-          });
-        } else {
-          // Fallback: thực hiện login trực tiếp trên trang hiện tại
-          loginFacebookExtensionJS(accountInfo[0], accountInfo[1], accountInfo[2], accountInfo[3]);
-          resolve({success: true, message: 'Login initiated'});
-        }
+export const loginAccount = function (accountInfo: string[]) {
+  return new Promise(async (resolve, reject) => {
+    let response = {};
+    if (accountInfo.length < 5) {
+      resolve(false);
+      return;
+    }
+    
+    try {
+      // Gửi message tới background để mở tab và thực hiện login
+      if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+        chrome.runtime.sendMessage({
+          type: 'LOGIN_FACEBOOK',
+          uid: accountInfo[0],
+          username: accountInfo[0],
+          email: accountInfo[0],
+          password: accountInfo[1],
+          twoFactorCode: accountInfo[2] || '',
+          oauth2: accountInfo[3] || '',
+          proxy: '',
+          clientId: accountInfo[4] || '',
+          resetLink: accountInfo[5] || ''
+        }, function(res) {
+          resolve(res);
+        });
+      } else {
+        // Fallback: thực hiện login trực tiếp trên trang hiện tại
+        loginFacebookExtensionJS(accountInfo[0], accountInfo[1], accountInfo[2], accountInfo[3]);
+        resolve({success: true, message: 'Login initiated'});
       }
     } catch (error) {
       response.error_code = 100000;
@@ -343,6 +332,7 @@ export const loginAccount = function (accountInfo: string[], isBlock_1: bool = f
     }
   })
 }
+
 
 
 // Hàm thực hiện đăng nhập Facebook tự động bằng JS, click từng bước với setTimeout
